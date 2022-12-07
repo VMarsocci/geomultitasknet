@@ -206,9 +206,9 @@ class UNet(nn.Module):
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
-        x = self.outc(x)
+        output = self.outc(x)
 
-        return x1, x2, x5, x
+        return x1, x2, x5, x, output
 
 ########### GEO UNET
 class GeoUNet(nn.Module):
@@ -356,89 +356,6 @@ class GeoUNet(nn.Module):
 
         return x1, x2, x5, x
 
-class MultiTaskUNet(nn.Module):
-    """UNet = U-Net with reduced number of params (2M)
-
-    Parameters
-    ----------
-    n_channels : int
-        number of input channels
-    n_classes : int
-        number of output classes
-    dropout : float
-        if False no dropout
-    """
-
-    def __init__(self, n_channels, n_classes, drop_out = False):
-
-        super(MultiTaskUNet, self).__init__()
-
-        self.n_classes = n_classes
-        self.name = "MultiTaskUNet"
-
-        # encoder
-        self.inc = InputConv(n_channels, 16)
-        self.down1 = EncoderConv(16, 32)
-        self.down2 = EncoderConv(32, 64)
-        self.down3 = EncoderConv(64, 128)
-        self.down4 = EncoderConv(128, 256)
-        # decoder
-        self.up1 = DecoderConv(256, 128)
-        self.up2 = DecoderConv(128, 64)
-        self.up3 = DecoderConv(64, 32)
-        self.up4 = DecoderConv(32, 16)
-
-        # last layer
-        self.outc = OutputConv(16, n_classes)
-
-        self.ch1 = EncoderConv(16, 32)
-        self.ch2 = EncoderConv(32, 64)
-        self.coords_predictor = nn.Sequential(
-            nn.Linear(in_features=64*64*64, out_features=1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_features=1024, out_features=256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_features=256, out_features=256),
-            )
-
-        # dropout
-        self.drop_out = drop_out
-        if self.drop_out:
-            self.dropout = nn.Dropout(drop_out)            
-
-    def forward(self, x):
-
-        x1 = self.inc(x)
-        if self.drop_out:
-            x1 = self.dropout(x1)
-        x2 = self.down1(x1)
-        if self.drop_out:
-            x2 = self.dropout(x2)
-        x3 = self.down2(x2)
-        if self.drop_out:
-            x3 = self.dropout(x3)
-        x4 = self.down3(x3)
-        if self.drop_out:
-            x4 = self.dropout(x4)
-        x5 = self.down4(x4)
-        if self.drop_out:
-            x5 = self.dropout(x5)
-        x = self.up1(x5, x4)
-        x = self.up2(x, x3)
-        x = self.up3(x, x2)
-        x = self.up4(x, x1)
-
-        x_2d = self.outc(x)
-
-        x = self.ch1(x) #b, 32, 128, 128
-        x = self.ch2(x) #b, 64, 64, 64
-        x_coord = self.coords_predictor(x.view(x.size(0), -1))
-
-        return x_2d, x_coord
-
-
 class ConcatGeoUNet(nn.Module):
     """UNet = U-Net with reduced number of params (2M)
 
@@ -549,100 +466,6 @@ class ConcatGeoUNet(nn.Module):
 
         return x1, x2, x5, x
 
-###########TIME AND GEO MULTI TASK
-class GeoTimeTaskUNet(nn.Module):
-    """UNet = U-Net with reduced number of params (2M)
-
-    Parameters
-    ----------
-    n_channels : int
-        number of input channels
-    n_classes : int
-        number of output classes
-    dropout : float
-        if False no dropout
-    """
-
-    def __init__(self, n_channels, n_classes, drop_out = False):
-
-        super(GeoTimeTaskUNet, self).__init__()
-
-        self.n_classes = n_classes
-        self.name = "GeoTimeTaskUNet"
-
-        # encoder
-        self.inc = InputConv(n_channels, 16)
-        self.down1 = EncoderConv(16, 32)
-        self.down2 = EncoderConv(32, 64)
-        self.down3 = EncoderConv(64, 128)
-        self.down4 = EncoderConv(128, 256)
-        # decoder
-        self.up1 = DecoderConv(256, 128)
-        self.up2 = DecoderConv(128, 64)
-        self.up3 = DecoderConv(64, 32)
-        self.up4 = DecoderConv(32, 16)
-
-        # last layer
-        self.outc = OutputConv(16, n_classes)
-
-        self.ch1 = EncoderConv(16, 32)
-        self.ch2 = EncoderConv(32, 64)
-        self.coords_predictor = nn.Sequential(
-            nn.Linear(in_features=64*64*64, out_features=1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_features=1024, out_features=256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_features=256, out_features=256),
-            )
-
-        self.time_predictor = nn.Sequential(
-            nn.Linear(in_features=64*64*64, out_features=512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_features=512, out_features=128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_features=128, out_features=4),
-            )
-
-        # dropout
-        self.drop_out = drop_out
-        if self.drop_out:
-            self.dropout = nn.Dropout(drop_out)            
-
-    def forward(self, x):
-
-        x1 = self.inc(x)
-        if self.drop_out:
-            x1 = self.dropout(x1)
-        x2 = self.down1(x1)
-        if self.drop_out:
-            x2 = self.dropout(x2)
-        x3 = self.down2(x2)
-        if self.drop_out:
-            x3 = self.dropout(x3)
-        x4 = self.down3(x3)
-        if self.drop_out:
-            x4 = self.dropout(x4)
-        x5 = self.down4(x4)
-        if self.drop_out:
-            x5 = self.dropout(x5)
-        x = self.up1(x5, x4)
-        x = self.up2(x, x3)
-        x = self.up3(x, x2)
-        x = self.up4(x, x1)
-
-        x_2d = self.outc(x)
-
-        x = self.ch1(x) #b, 32, 128, 128
-        x = self.ch2(x) #b, 64, 64, 64
-        x_coord = self.coords_predictor(x.view(x.size(0), -1))
-        x_time = self.time_predictor(x.view(x.size(0), -1))
-
-        return x_2d, x_coord, x_time
-
 ######KEEP IT SIMPLE FDM
 class FDMUNet(nn.Module):
 
@@ -698,50 +521,6 @@ class FDMUNet(nn.Module):
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
-        x = self.outc(x)
+        output = self.outc(x)
 
-        return x1, x2, x5, x
-
-################LOADING RIGHT MODEL
-def choose_model(model_params, geo_data):
-    if model_params["model_name"] == "unet":
-        model =  UNet(n_channels = model_params['num_channels'], 
-                n_classes = model_params['num_classes'], 
-                drop_out = model_params['dropout'])
-    elif model_params["model_name"] == "keepitsimple":
-        model = FDMUNet(n_channels = model_params['num_channels'], 
-           n_classes = model_params['num_classes'], 
-           drop_out = model_params['dropout'])
-    elif model_params["model_name"] == "mt_geo_time":
-        model = GeoTimeTaskUNet(n_channels = model_params['num_channels'], 
-           n_classes = model_params['num_classes'], 
-           drop_out = model_params['dropout'])
-    elif model_params["model_name"] == "concat_geounet":
-        model = ConcatGeoUNet(n_channels = model_params['num_channels'], 
-           n_classes = model_params['num_classes'], 
-           geoinfo= geo_data,
-           drop_out = model_params['dropout'],
-           use_time= model_params['use_time'],
-           use_geo= model_params['use_geo'],
-           use_domains= model_params['use_domains'],
-           use_coords_pos_enc = model_params['use_coords_pos_enc'],
-           use_label_distr = model_params['use_label_distr'])
-    elif model_params["model_name"] == "multitaskunet":
-        model = MultiTaskUNet(n_channels = model_params['num_channels'], 
-           n_classes = model_params['num_classes'], 
-           drop_out = model_params['dropout'])
-    elif model_params["model_name"] == "geounet":
-        model = GeoUNet(n_channels = model_params['num_channels'], 
-           n_classes = model_params['num_classes'], 
-           geoinfo= geo_data,
-           drop_out = model_params['dropout'],
-           use_time= model_params['use_time'],
-           use_geo= model_params['use_geo'],
-           use_domains= model_params['use_domains'],
-           use_coords_pos_enc = model_params['use_coords_pos_enc'],
-           use_label_distr = model_params['use_label_distr']
-           )  
-    else:
-        raise Exception("This model is not implemented")       
-
-    return model
+        return x1, x2, x5, x, output

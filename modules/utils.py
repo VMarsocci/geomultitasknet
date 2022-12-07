@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch.autograd import Function
 import pathlib
 import json
+import random
 
 from .metrics import *
 
@@ -311,7 +312,12 @@ def cov(x, rowvar=False, bias=False, ddof=None, aweights=None):
     return c.squeeze()
 
 
-def spatiotemporal_batches(img_names, info_diz, pos_enc_coords = False, circle_encoding = False):
+def spatiotemporal_batches(img_names, 
+                            info_diz, 
+                            pos_enc_coords = False, 
+                            circle_encoding = False,
+                            encoding_freq = 10000,
+                            geo_noise = False):
 
   coord_batch = []
   month_batch = []
@@ -376,6 +382,13 @@ def spatiotemporal_batches(img_names, info_diz, pos_enc_coords = False, circle_e
 
     x = info_diz[key]["patch_centroid_x"] - 489353.59 #center coordinate for EPSG:2154
     y = info_diz[key]["patch_centroid_y"] - 6587552.2 #center coordinate for EPSG:2154
+    if geo_noise:
+        if random.randint(0,1) == 0:
+            x += random.randint(0, geo_noise)
+            y += random.randint(0, geo_noise)
+        elif random.randint(0,1) == 1:
+            x -= random.randint(0, geo_noise)
+            y -= random.randint(0, geo_noise)
     year = int(info_diz[key]["date"].split('-')[0]) - 2018 #norm with the minimum
     domain = int(cat[info_diz[key]["domain"]])
     month = int(info_diz[key]["date"].split('-')[1])-1
@@ -387,7 +400,7 @@ def spatiotemporal_batches(img_names, info_diz, pos_enc_coords = False, circle_e
     if pos_enc_coords:
         d= int(256/2)
         d_i=np.arange(0,d/2)
-        freq=1/(10000**(2*d_i/d))
+        freq=1/(encoding_freq**(2*d_i/d))
         enc=np.zeros(d*2)
         enc[0:d:2]=np.sin(x * freq)
         enc[1:d:2]=np.cos(x * freq)
@@ -401,7 +414,7 @@ def spatiotemporal_batches(img_names, info_diz, pos_enc_coords = False, circle_e
         hour_ = hour*15/57.2958
         hour = [np.sin(hour_), np.cos(hour_)]
 
-        month_ = month*15/57.2958
+        month_ = month*30/57.2958
         month = [np.sin(month_), np.cos(month_)]
         hour_batch.append(torch.tensor(hour).float())
         month_batch.append(torch.tensor(month).float()) 
@@ -438,6 +451,7 @@ def choose_loss(params):
     elif params["constraint_name"] == "multitask_strategy":
         criteria["constraint"] = nn.MSELoss()
         criteria["constraint_name"] = "multitask_strategy"
+        criteria["mt_time"] = params["mt_time"]
     else:
         criteria["constraint"] = False
         criteria["constraint_name"] = False

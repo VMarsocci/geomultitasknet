@@ -1,0 +1,23 @@
+export QT_QPA_PLATFORM=offscreen 
+echo "\n\n geoconcat_coral_rgb"
+python train.py -c="geoconcat_coral_rgb"
+echo "\n\n resunet18_mt"
+python train.py -c="resunet18_mt" #bs 16
+echo "\n\n unet_mt"
+python train.py -c="unet_mt"
+echo "\n\n pool_enc_unet_mt"
+python train.py -c="pool_enc_unet_mt"
+echo "\n\n pooling_unet_mt"
+python train.py -c="pooling_unet_mt"
+echo "\n\n enc_unet_mt"
+python train.py -c="enc_unet_mt"
+echo "\n\n geotime_resunet_mt" #bs 8
+python train.py -c="geotime_resunet_mt"
+echo "\n\n geotime_unet_mt"
+python train.py -c="geotime_unet_mt"
+echo "\n\n noise_lowfreq_unet_mt"
+python train.py -c="noise_lowfreq_unet_mt"
+echo "\n\n noise_unet_mt"
+python train.py -c="noise_unet_mt"
+echo "\n\n lowfreq_unet_mt"
+python train.py -c="lowfreq_unet_mt"

@@ -314,4 +314,4 @@ class UNetResNet(nn.Module):
         dec0 = self.dec0(dec1)
         x = self.final(F.dropout2d(dec0, p=self.dropout_2d))
 
-        return conv1, conv2, conv5, x
+        return conv1, conv2, conv5, dec0, x

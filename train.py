@@ -62,8 +62,9 @@ print("Config file correctly saved!")
 train_trans = choose_training_augmentations(exp_config)
 val_trans = get_validation_augmentations(*exp_config['data']['val']['normalization'])   
 
-###########  GET GEO DATA ##############
+###########  GET OTHER DATA ##############
 geo_data = get_geo_data("../data/DATASET_DEF1_METADATA_train.json", "../data//DATASET_DEF1_METADATA_test.json")
+metadata = exp_config["metadata"]
 
 ###########   DATAMODULE    ##########
 dm = DataModule(
@@ -104,7 +105,8 @@ seg_module = SegmentationTask(
     optimizer=optimizer,
     scheduler=scheduler,
     uda = exp_config['general']['uda'],
-    geo_data = geo_data
+    geo_data = geo_data,
+    metadata = metadata
 )
 
 ###########   CALLBACKS    ##########

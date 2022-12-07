@@ -1,20 +1,22 @@
 # General
 general:
-  test_id: "coral_concatgeounet"
+  test_id: "base"
   uda: True
 
 # Model parameters.
 model:
-  model_name: "concat_geounet"
-  # model_name: "resunet18"
-  constraint_name: "coral"
-  weight: 10000000000.
+  model_name: "resunet18"
+  constraint_name: "multitask_strategy"
+  mt_time: True
+  pooling: False
+  after_encoder: False
+  weight: 10
   dropout:
-  use_geo: True
-  use_time: False
-  use_domains: False
-  use_coords_pos_enc: True
-  use_label_distr: False
+  # use_geo: True
+  # use_time: False
+  # use_domains: False
+  # use_coords_pos_enc: True
+  # use_label_distr: False
   num_classes: 13
   num_channels: 3
   class_ignored: 0
@@ -26,7 +28,7 @@ metadata:
   circle_encoding: True
   encoding_freq: 10000
   geo_noise: False
-  
+
 # Optimization parameters.
 optim:
   optim_type: "adamw"
@@ -47,7 +49,7 @@ data:
   train:
     img_txt: '../data/sub_train_imgs.txt'
     mask_txt: '../data/sub_train_masks.txt'
-    batch_size: 25
+    batch_size: 8
     transform: "randaugment" #no yes randaugment
     normalization: [[0.44627694, 0.46320033, 0.42865627], 
                       [0.2055539 , 0.18050476, 0.177541]]

@@ -14,7 +14,8 @@ class SegmentationTask(pl.LightningModule):
         optimizer,
         scheduler=None,
         uda = False,
-        geo_data = False
+        geo_data = False,
+        metadata = False,
     ):
 
         super().__init__()
@@ -25,6 +26,7 @@ class SegmentationTask(pl.LightningModule):
         self.scheduler = scheduler
         self.uda = uda
         self.geo_data = geo_data
+        self.metadata = metadata
 
 
     def setup(self, stage=None):
@@ -54,12 +56,12 @@ class SegmentationTask(pl.LightningModule):
     def forward(self, input_im, idx):
         outputs = {}
         if self.model.name in ("FDMUNet", "UNet", "ResUNet"):
-            outputs["x1"], outputs["x2"], outputs["x5"], outputs["logits"] = self.model(input_im)
+            outputs["x1"], outputs["x2"], outputs["x5"], _, outputs["logits"] = self.model(input_im)
         elif self.model.name in ("ConcatGeoUNet", "GeoUNet"):
             outputs["x1"], outputs["x2"], outputs["x5"], outputs["logits"] = self.model(input_im, idx)
-        elif self.model.name == "GeoTimeTaskUNet":
+        elif self.model.name == "GeoTimeMultiTaskNet":
             outputs["logits"], outputs["x_coord"], outputs["x_time"] = self.model(input_im)   
-        elif self.model.name == "MultiTaskUNet":
+        elif self.model.name == "GeoMultiTaskNet":
             outputs["logits"], outputs["x_coord"] = self.model(input_im)    
         return outputs
 
@@ -71,7 +73,6 @@ class SegmentationTask(pl.LightningModule):
         elif stage == "val":
             idx, images, targets = batch
 
-        # if self.model.name 
         outputs = self.forward(images, idx)
 
         seg_criterion = self.criteria["segmentation"]
@@ -96,11 +97,25 @@ class SegmentationTask(pl.LightningModule):
             elif self.criteria["constraint_name"] == "multitask_strategy":
                 constr_criterion= self.criteria["constraint"]
                 constr_weight = self.criteria["constraint_weight"]
-                coords_l, _, _, _, _, _ = spatiotemporal_batches(idx, self.geo_data, pos_enc_coords = True, circle_encoding = True)
-                coords_un, _, _, _, _, _ = spatiotemporal_batches(idx_t, self.geo_data, pos_enc_coords = True, circle_encoding = True)
+                coords_l, month_l, hour_l, _, _, _ = spatiotemporal_batches(idx, self.geo_data, 
+                                                                            pos_enc_coords = self.metadata["pos_enc_coords"], 
+                                                                            circle_encoding = self.metadata["circle_encoding"],
+                                                                            encoding_freq= self.metadata["encoding_freq"],
+                                                                            geo_noise = self.metadata["geo_noise"])
+                coords_un, month_un, hour_un, _, _, _ = spatiotemporal_batches(idx_t, self.geo_data,                                                                             pos_enc_coords = self.metadata["pos_enc_coords"], 
+                                                                            circle_encoding = self.metadata["circle_encoding"],
+                                                                            encoding_freq= self.metadata["encoding_freq"],
+                                                                            geo_noise = self.metadata["geo_noise"])
                 coord_loss1 = constr_criterion(outputs["x_coord"], coords_l)
                 coord_loss2 = constr_criterion(target_outputs["x_coord"], coords_un)
-                loss = loss + constr_weight*coord_loss1 + constr_weight*coord_loss2
+                if self.criteria["mt_time"]:
+                    time_l = torch.cat([month_l, hour_l], dim = -1)
+                    time_un = torch.cat([month_un, hour_un], dim = -1)
+                    time_loss1 = constr_criterion(outputs["x_time"], time_l)
+                    time_loss2 = constr_criterion(target_outputs["x_time"], time_un)
+                    loss += coord_loss1 + coord_loss2 + constr_weight*time_loss1 + constr_weight*time_loss2
+                else:
+                    loss += constr_weight*coord_loss1 + constr_weight*coord_loss2
 
         with torch.no_grad():
             proba = torch.softmax(outputs["logits"], dim=1)

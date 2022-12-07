@@ -1,20 +1,22 @@
 # General
 general:
-  test_id: "coral_concatgeounet"
+  test_id: "base"
   uda: True
 
 # Model parameters.
 model:
-  model_name: "concat_geounet"
-  # model_name: "resunet18"
-  constraint_name: "coral"
-  weight: 10000000000.
+  model_name: "unet"
+  constraint_name: "multitask_strategy"
+  mt_time: False
+  pooling: False
+  after_encoder: False
+  weight: 1
   dropout:
-  use_geo: True
-  use_time: False
-  use_domains: False
-  use_coords_pos_enc: True
-  use_label_distr: False
+  # use_geo: True
+  # use_time: False
+  # use_domains: False
+  # use_coords_pos_enc: True
+  # use_label_distr: False
   num_classes: 13
   num_channels: 3
   class_ignored: 0
@@ -26,7 +28,7 @@ metadata:
   circle_encoding: True
   encoding_freq: 10000
   geo_noise: False
-  
+
 # Optimization parameters.
 optim:
   optim_type: "adamw"

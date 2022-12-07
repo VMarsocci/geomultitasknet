@@ -87,5 +87,5 @@ class DeeplabV3p(nn.Module):
 
         x = F.interpolate(x, size=input.size()[2:], mode='bilinear', align_corners=True)
 
-        return x
+        return low_level_feat, x
 
