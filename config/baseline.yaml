@@ -1,0 +1,48 @@
+# General
+general:
+  test_id: "00"
+
+# Model parameters.
+model:
+  dropout:
+  num_classes: 13
+  num_channels: 5
+  class_ignored: 0
+  ckpt_path: "experiments/baseline/00/checkpoints/ckpt-epoch=01-val_loss=1.31_00.ckpt"
+
+# Optimization parameters.
+optim:
+  optim_type: "adamw"
+  num_epochs: 2
+  lr: 0.0003
+  beta: [0.9, 0.999]
+  end_lr: 0.000005
+  weight_decay: 0.001
+  lr_schedule_type: "step_lr"
+  step: 75
+  gamma: 0.75
+  patience: 25
+
+# Data parameters:
+data:
+  bands: 'rgbirh' #rgb rgbir rgbirh
+  path: '../data/'
+  train:
+    img_txt: '../data/sub_train_imgs.txt'
+    mask_txt: '../data/sub_train_masks.txt'
+    batch_size: 1
+    transform: "randaugment" #no yes randaugment
+    normalization: [[0.44627694, 0.46320033, 0.42865627, 0.40146836, 0.06543307], 
+                      [0.2055539 , 0.18050476, 0.177541  , 0.15483773, 0.1159052 ]]
+  val:
+    img_txt: '../data/sub_test_imgs.txt'
+    mask_txt: '../data/sub_test_masks.txt'
+    normalization: [[0.44609856, 0.46605311, 0.43317396, 0.41248302, 0.06313556], 
+                      [0.21038504, 0.18305449, 0.17746451, 0.16656243, 0.11690227]]
+  test:
+    cropsize: 512
+    img_txt: '../data/sub_test_imgs.txt'
+    mask_txt: '../data/sub_test_masks.txt'
+    plot_results: True
+    net: "unet"
+    crf: False

@@ -1,0 +1,17 @@
+tqdm==4.64.1
+numpy==1.21.6
+torch==1.12.1
+torchvision==0.13.1
+Pillow==7.1.2
+pandas==1.3.5
+matplotlib==3.2.2
+seaborn==0.11.2
+pathlib==1.0.1
+tifffile
+imagecodecs
+albumentations
+online_triplet_loss
+einops
+math
+crfseg
+pytorch-lightning
