@@ -22,6 +22,7 @@ class SupDataset(BaseDataset):
             augmentation=None,
             cropsize = 256,
             geoinfo = False,
+            stage = "train"
             ):
 
         with open(images_txt) as f:
@@ -38,6 +39,7 @@ class SupDataset(BaseDataset):
         self.augmentation = augmentation
         self.cropsize = cropsize
         self.geoinfo = geoinfo
+        self.stage = stage
 
     def __getitem__(self, i):
         
@@ -59,10 +61,16 @@ class SupDataset(BaseDataset):
 
         #random crop of the image and the mask
         if self.cropsize:
-            self.h = np.random.randint(0, self.cropsize)
-            self.w = np.random.randint(0, self.cropsize)
-            image = image[self.h:self.h+self.cropsize, self.w:self.w+self.cropsize, :]
-            mask = mask[self.h:self.h+self.cropsize, self.w:self.w+self.cropsize]
+            if self.stage == "train":
+                h = np.random.randint(0, self.cropsize)
+                w = np.random.randint(0, self.cropsize)
+                image = image[h:h+self.cropsize, w:w+self.cropsize, :]
+                mask = mask[h:h+self.cropsize, w:w+self.cropsize]
+            else:
+                h_cps = int(self.cropsize/2)
+                hc = wc = 256
+                image = image[hc-h_cps:hc+h_cps, wc-h_cps:wc+h_cps, :]
+                mask = mask[hc-h_cps:hc+h_cps, wc-h_cps:wc+h_cps]
         
         # apply augmentations
         if self.augmentation:
@@ -79,52 +87,52 @@ class SupDataset(BaseDataset):
     def __len__(self):
         return len(self.images_fps)
         
-class UnsupDataset(BaseDataset):
+# class UnsupDataset(BaseDataset):
     
-    def __init__(
-            self, 
-            path,
-            images_txt, 
-            bands = 'rgbirh',
-            augmentation=None,
-            cropsize = 256,
-            crop_indexes = False #for noisy student training
-            ):
+#     def __init__(
+#             self, 
+#             path,
+#             images_txt, 
+#             bands = 'rgbirh',
+#             augmentation=None,
+#             cropsize = 256,
+#             crop_indexes = False #for noisy student training
+#             ):
 
-        with open(images_txt) as f:
-            lines = f.readlines()
+#         with open(images_txt) as f:
+#             lines = f.readlines()
             
-        self.images_fps = sorted([line.strip() for line in lines]) 
-        self.augmentation = augmentation
-        self.bands = bands
-        self.data_path = path
-        self.cropsize = cropsize
-        self.crop_indexes = crop_indexes
+#         self.images_fps = sorted([line.strip() for line in lines]) 
+#         self.augmentation = augmentation
+#         self.bands = bands
+#         self.data_path = path
+#         self.cropsize = cropsize
+#         self.crop_indexes = crop_indexes
     
-    def __getitem__(self, i):
+#     def __getitem__(self, i):
         
-        # read data
-        image = tiff.imread(os.path.join(self.data_path, self.images_fps[i]))
+#         # read data
+#         image = tiff.imread(os.path.join(self.data_path, self.images_fps[i]))
         
-        image = load_bands(image, self.bands)
+#         image = load_bands(image, self.bands)
         
-        #random crop of the image
-        if self.cropsize:
-            self.h = np.random.randint(0, self.cropsize)
-            self.w = np.random.randint(0, self.cropsize)
-            image = image[self.h:self.h+self.cropsize, self.w:self.w+self.cropsize, :]
+#         #random crop of the image
+#         if self.cropsize:
+#             self.h = np.random.randint(0, self.cropsize)
+#             self.w = np.random.randint(0, self.cropsize)
+#             image = image[self.h:self.h+self.cropsize, self.w:self.w+self.cropsize, :]
 
-        # apply augmentations
-        if self.augmentation:
-            image = self.augmentation(image = image)['image']
+#         # apply augmentations
+#         if self.augmentation:
+#             image = self.augmentation(image = image)['image']
 
-        if self.crop_indexes:            
-            return self.images_fps[i], image, self.h, self.w
-        else:
-            return self.images_fps[i], image
+#         if self.crop_indexes:            
+#             return self.images_fps[i], image, self.h, self.w
+#         else:
+#             return self.images_fps[i], image
         
-    def __len__(self):
-        return len(self.images_fps)
+#     def __len__(self):
+#         return len(self.images_fps)
     
 class InfiniteDataLoader(DataLoader):
     def __init__(self, *args, **kwargs):

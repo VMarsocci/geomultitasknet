@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 from pytorch_lightning import LightningDataModule
 
-from .dataset import SupDataset, UnsupDataset, InfiniteDataLoader
+from .dataset import SupDataset, InfiniteDataLoader
 
 
 class DataModule(LightningDataModule):
@@ -49,6 +49,7 @@ class DataModule(LightningDataModule):
                 self.source_images_txt[0], 
                 self.source_masks_txt[0], 
                 bands = self.bands[0],
+                cropsize=self.cropsize[0],
                 augmentation= self.train_augmentation[0],
             )
 
@@ -57,6 +58,7 @@ class DataModule(LightningDataModule):
                 self.target_images_txt[0], 
                 self.target_masks_txt[0], 
                 bands = self.bands[0],
+                cropsize=self.cropsize[0],
                 augmentation= self.train_augmentation[0],
             )
 
@@ -65,16 +67,19 @@ class DataModule(LightningDataModule):
                     self.target_images_txt[0], 
                     self.target_masks_txt[0], 
                     bands = self.bands[0],
+                    cropsize=self.cropsize[0],
                     augmentation= self.valid_augmentation[0],
                 )
 
-        elif stage == "predict" or stage == "validate":
+        if stage in ("predict", "validate", "val", "test"):
                 self.val_dataset = SupDataset(
                     self.path[0],
                     self.target_images_txt[0], 
                     self.target_masks_txt[0], 
                     bands = self.bands[0],
+                    cropsize=self.cropsize[0],
                     augmentation= self.valid_augmentation[0],
+                    stage = "test"
                 )
 
                 self.test_dataset = SupDataset(
@@ -82,7 +87,9 @@ class DataModule(LightningDataModule):
                     self.target_images_txt[0], 
                     self.target_masks_txt[0], 
                     bands = self.bands[0],
+                    cropsize=self.cropsize[0],
                     augmentation= self.valid_augmentation[0],
+                    stage = "test"
                 )
 
     def train_dataloader(self):
@@ -128,6 +135,15 @@ class DataModule(LightningDataModule):
         return DataLoader(
             dataset=self.test_dataset,
             batch_size=1, 
+            shuffle=False,
+            num_workers=self.num_workers[0],
+            drop_last=self.drop_last[0],
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            dataset=self.test_dataset,
+            batch_size=1,
             shuffle=False,
             num_workers=self.num_workers[0],
             drop_last=self.drop_last[0],

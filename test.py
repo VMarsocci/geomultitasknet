@@ -1,14 +1,7 @@
 import torch
 import torch.nn as nn
-
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_lightning.callbacks.progress.tqdm_progress import TQDMProgressBar
 from pytorch_lightning import Trainer
-try:
-  from pytorch_lightning.utilities.distributed import rank_zero_only
-except ImportError:
-  from pytorch_lightning.utilities.rank_zero import rank_zero_only  
+
 
 import numpy as np
 import shutil
@@ -23,6 +16,7 @@ from modules.task_module import SegmentationTask
 from modules.model import choose_model
 from modules.optim import set_optimizer, set_scheduler
 from modules.utils import get_geo_data, choose_loss
+from modules.writer import PredictionWriter
 
 def get_args():
     parser = ArgumentParser(description = "Hyperparameters", add_help = True)
@@ -31,6 +25,7 @@ def get_args():
     parser.add_argument('-gpu', '--gpus_per_node', type = int, help = 'Number of GPUs per node', dest = 'GPUs', default = 1)
     parser.add_argument('-n', '--nodes', type = int, help = 'Number of nodes', dest = 'Ns', default = 1)
     parser.add_argument('-s', '--strategy', type = str, help = 'None if only one GPU, else ddp', dest = 'S', default = None)
+    parser.add_argument('-p', '--predict', type = str, help = 'If True, do the predictions', dest = 'PREDICT', default = None)
     return parser.parse_args()
 
 args = get_args()
@@ -78,7 +73,7 @@ dm = DataModule(
     valid_augmentation= val_trans,
     cropsize = 256,
     geoinfo = False,
-    batch_size = exp_config['data']['train']['batch_size'],
+    batch_size = 1,
     num_workers = num_workers,
     drop_last = False,
     uda = exp_config['general']['uda']
@@ -93,11 +88,9 @@ criteria = choose_loss(exp_config['model'])
 
 ###########   OPTIMIZER AND SCHEDULER    ##########
 optimizer = set_optimizer(exp_config['optim'], net)
-print('Optimizer selected: ', exp_config['optim']['optim_type'])
 scheduler = set_scheduler(exp_config['optim'], optimizer)
-print('Scheduler selected: ', exp_config['optim']['lr_schedule_type'])
 
-###########   SEGMENTATION MODULE    ##########
+###########   SEGMENTATION    ##########
 seg_module = SegmentationTask(
     model=net,
     num_classes=exp_config['model']['num_classes'],
@@ -106,60 +99,29 @@ seg_module = SegmentationTask(
     scheduler=scheduler,
     uda = exp_config['general']['uda'],
     geo_data = geo_data,
-    metadata = metadata
+    metadata = metadata,
+    config_name=config_name,
 )
 
 ###########   CALLBACKS    ##########
-ckpt_callback = ModelCheckpoint(
-    monitor="val_loss",
-    dirpath=os.path.join(out_file,"checkpoints"),
-    filename="ckpt-{epoch:02d}-{val_loss:.2f}"+'_'+exp_config['general']['test_id'],
-    save_top_k=1,
-    mode="min",
-    save_weights_only=False, 
+writer_callback = PredictionWriter(        
+    output_dir=os.path.join(out_file, "predictions"),
+    write_interval="batch",
 )
 
-early_stop_callback = EarlyStopping(
-    monitor="val_loss",
-    min_delta=0.00,
-    patience=exp_config['optim']['patience'],
-    mode="min",
-)
-
-prog_rate = TQDMProgressBar(refresh_rate=5)
-
-callbacks = [
-    ckpt_callback, 
-    early_stop_callback,
-    prog_rate,
-]
-
-###########   LOGGERS    ##########
-logger = TensorBoardLogger(
-    save_dir=exp_directory,
-    name=Path("tensorboard_logs"+'_'+exp_config['general']['test_id']).as_posix()
-)
-
-loggers = [
-    logger
-]
-
-###########   TRAINER    ##########
+#### instanciation of prediction Trainer
 trainer = Trainer(
     accelerator="gpu",
     devices=gpus_per_node,
     strategy=strategy,
     num_nodes=num_nodes,
-    max_epochs=exp_config['optim']['num_epochs'],
-    num_sanity_val_steps=0,
-    callbacks = callbacks,
-    # resume_from_checkpoint=ckpt_path,
-    logger=loggers,
+    callbacks = [writer_callback],
     enable_progress_bar = True,
 )
 
 if __name__ == '__main__':
-    print("+++++++++++++++++++++TRAINING STAGE")
-    trainer.fit(seg_module, datamodule=dm, ckpt_path=ckpt_path)
-    print("+++++++++++++++++++++VALIDATING STAGE")
-    trainer.validate(seg_module, datamodule=dm)
+    print("+++++++++++++++++++++TESTING STAGE")
+    metrics = trainer.test(seg_module, datamodule=dm, ckpt_path=ckpt_path)
+    if args.PREDICT:
+        print("+++++++++++++++++++++PREDICTING STAGE")
+        trainer.predict(seg_module, datamodule=dm, ckpt_path=ckpt_path)

@@ -1,23 +1,66 @@
 export QT_QPA_PLATFORM=offscreen 
-echo "\n\n geoconcat_coral_rgb"
-python train.py -c="geoconcat_coral_rgb"
-echo "\n\n resunet18_mt"
-python train.py -c="resunet18_mt" #bs 16
-echo "\n\n unet_mt"
-python train.py -c="unet_mt"
-echo "\n\n pool_enc_unet_mt"
-python train.py -c="pool_enc_unet_mt"
-echo "\n\n pooling_unet_mt"
-python train.py -c="pooling_unet_mt"
-echo "\n\n enc_unet_mt"
-python train.py -c="enc_unet_mt"
-echo "\n\n geotime_resunet_mt" #bs 8
-python train.py -c="geotime_resunet_mt"
-echo "\n\n geotime_unet_mt"
-python train.py -c="geotime_unet_mt"
-echo "\n\n noise_lowfreq_unet_mt"
-python train.py -c="noise_lowfreq_unet_mt"
-echo "\n\n noise_unet_mt"
-python train.py -c="noise_unet_mt"
-echo "\n\n lowfreq_unet_mt"
-python train.py -c="lowfreq_unet_mt"
+# echo "\n\n geoconcat_coral_rgb"
+# python train.py -c="geoconcat_coral_rgb"
+# echo "\n\n resunet18_mt"
+# python train.py -c="resunet18_mt" #bs 16
+# echo "\n\n unet_mt"
+# python train.py -c="unet_mt"
+# echo "\n\n pool_enc_unet_mt"
+# python train.py -c="pool_enc_unet_mt"
+# echo "\n\n pooling_unet_mt"
+# python train.py -c="pooling_unet_mt"
+# echo "\n\n enc_unet_mt"
+# python train.py -c="enc_unet_mt"
+# echo "\n\n geotime_resunet_mt" #bs 8
+# python train.py -c="geotime_resunet_mt"
+# echo "\n\n geotime_unet_mt"
+# python train.py -c="geotime_unet_mt"
+# echo "\n\n noise_lowfreq_unet_mt"
+# python train.py -c="noise_lowfreq_unet_mt"
+# echo "\n\n noise_unet_mt"
+# python train.py -c="noise_unet_mt"
+# echo "\n\n lowfreq_unet_mt"
+# python train.py -c="lowfreq_unet_mt"
+
+# echo "\n\n baseline_rgb"
+# python test.py -c="baseline" -p True
+# echo "\n\n geoconcat_coral_rgb"
+# python test.py -c="geoconcat_coral_rgb" -p True
+# echo "\n\n resunet18_mt"
+# python test.py -c="resunet18_mt" -p True
+# echo "\n\n unet_mt"
+# python test.py -c="unet_mt" -p True
+# echo "\n\n pool_enc_unet_mt"
+# python test.py -c="pool_enc_unet_mt" -p True
+# echo "\n\n pooling_unet_mt"
+# python test.py -c="pooling_unet_mt" -p True
+# echo "\n\n enc_unet_mt"
+# python test.py -c="enc_unet_mt" -p True
+# echo "\n\n geotime_resunet_mt" #bs 8
+# python test.py -c="geotime_resunet_mt" -p True
+# echo "\n\n geotime_unet_mt"
+# python test.py -c="geotime_unet_mt" -p True
+# echo "\n\n noise_lowfreq_unet_mt"
+# python test.py -c="noise_lowfreq_unet_mt" -p True
+# echo "\n\n noise_unet_mt"
+# python test.py -c="noise_unet_mt" -p True
+# echo "\n\n lowfreq_unet_mt"
+# python test.py -c="lowfreq_unet_mt" -p True
+
+# echo "noise+lowfreq+poolenc"
+# python train.py -c="pool_enc_unet_lowfreq_noise"
+# # python test.py -c="pool_enc_unet_lowfreq_noise" -p True
+# echo "baseline resunet"
+# python train.py -c="baselineresunet"
+# # python test.py -c="baselineresunet" -p True
+
+echo "resunet34"
+python train.py -c="resunet34"
+echo "resunet34_mt"
+python train.py -c="resunet34bestmt"
+echo "resunet50"
+python train.py -c="resunet50"
+echo "resunet50_mt"
+python train.py -c="resunet50bestmt"
+echo "unetlowfreq"
+python train.py -c="bestunet_lowerfreq_noise"

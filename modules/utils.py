@@ -10,7 +10,7 @@ import pathlib
 import json
 import random
 
-from .metrics import *
+# from .metrics import *
 
 #### CORAL LOSS
 class CorrelationAlignmentLoss(nn.Module):
@@ -459,3 +459,11 @@ def choose_loss(params):
 
     criteria["constraint_weight"] = params["weight"]
     return criteria
+
+def calc_miou(cm_array):
+    m = np.nan
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ious = (np.diag(cm_array) / (cm_array.sum(0) + cm_array.sum(1) - np.diag(cm_array))*100).round(2)
+    m = (np.nansum(ious) / (np.logical_not(np.isnan(ious))).sum()).round(2)
+
+    return m.astype(float), ious 

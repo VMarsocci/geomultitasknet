@@ -251,18 +251,23 @@ class UNetResNet(nn.Module):
         if encoder_depth == 18:
             self.encoder = torchvision.models.resnet18(weights=pretrained) #, num_classes=n_classes)
             bottom_channel_nr = 512
+            self.name = "ResUNet18"
         elif encoder_depth == 34:
             self.encoder = torchvision.models.resnet34(weights=pretrained) #, num_classes=n_classes)
             bottom_channel_nr = 512
+            self.name = "ResUNet34"
         elif encoder_depth == 50:
             self.encoder = torchvision.models.resnet50(weights=pretrained) #, num_classes=n_classes)
-            bottom_channel_nr = 512
+            bottom_channel_nr = 2048
+            self.name = "ResUNet50"
         elif encoder_depth == 101:
             self.encoder = torchvision.models.resnet101(weights=pretrained) #, num_classes=n_classes)
             bottom_channel_nr = 2048
+            self.name = "ResUNet101"
         elif encoder_depth == 152:
             self.encoder = torchvision.models.resnet152(weights=pretrained) #, num_classes=n_classes)
             bottom_channel_nr = 2048
+            self.name = "ResUNet152"
         else:
             raise NotImplementedError('only 18, 34, 50, 101, 152 version of Resnet are implemented')
 

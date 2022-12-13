@@ -34,20 +34,26 @@ class MultiTaskNet(nn.Module):
 
         if self.after_encoder:
             if not self.pooling:
-                if self.base_model.name == "ResUNet":
+                if self.base_model.name in ("ResUNet18", "ResUNet34"):
                     input_dim = 32768
+                elif self.base_model.name in ("ResUNet50", "ResUNet101", "ResUNet152"):
+                    input_dim = 32768*4
                 else:
                     input_dim = 65536
             else: 
                 self.max_pool = nn.MaxPool2d(8)
-                if self.base_model.name == "ResUNet":
+                if self.base_model.name in ("ResUNet18", "ResUNet34"):
                     input_dim = 512
+                elif self.base_model.name in ("ResUNet50", "ResUNet101", "ResUNet152"):
+                    input_dim = 512*4
                 else:
                     input_dim = 1024
         else:
             if not self.pooling:
-                if self.base_model.name == "ResUNet":
+                if self.base_model.name in ("ResUNet18", "ResUNet34"):
                     input_dim = 32
+                elif self.base_model.name in ("ResUNet50", "ResUNet101", "ResUNet152"):
+                    input_dim = 32*4
                 else:
                     input_dim = 16
                 self.ch1 = EncoderConv(input_dim, 32)                
@@ -55,8 +61,10 @@ class MultiTaskNet(nn.Module):
                 input_dim = 64*64*64
             else: 
                 self.max_pool = nn.MaxPool2d(8)
-                if self.base_model.name == "ResUNet":
+                if self.base_model.name in ("ResUNet18", "ResUNet34"):
                     input_dim = 32*32*32
+                elif self.base_model.name in ("ResUNet50", "ResUNet101", "ResUNet152"):
+                    input_dim = 32*32*32*4
                 else:
                     input_dim = 16*32*32           
             
@@ -128,8 +136,17 @@ def choose_model(model_params, geo_data):
            use_coords_pos_enc = model_params['use_coords_pos_enc'],
            use_label_distr = model_params['use_label_distr']
            )  
-    elif model_params["model_name"] == "resunet18":
-        model = UNetResNet(18, 
+    elif model_params["model_name"] in ("resunet18", "resunet34", "resunet50","resunet101", "resunet152"):
+        try:
+            model = UNetResNet(int(model_params["model_name"][-2:]), 
+                n_classes = model_params['num_classes'], 
+                n_channels = model_params['num_channels'], 
+                num_filters=32, 
+                dropout_2d=0.2,
+                pretrained=True, 
+                is_deconv=False)
+        except NotImplementedError:
+            model = UNetResNet(int(model_params["model_name"][-3:]), 
                 n_classes = model_params['num_classes'], 
                 n_channels = model_params['num_channels'], 
                 num_filters=32, 

@@ -1,8 +1,18 @@
 import torch
-from torchmetrics import MeanMetric, JaccardIndex
+from torchmetrics import MeanMetric, JaccardIndex, ConfusionMatrix
 import pytorch_lightning as pl
+import torchvision
+import io
+from PIL import Image
 
-from .utils import spatiotemporal_batches
+import numpy as np
+import seaborn as sn
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from prettytable import PrettyTable
+
+from .utils import spatiotemporal_batches, calc_miou
 
 
 class SegmentationTask(pl.LightningModule):
@@ -16,6 +26,7 @@ class SegmentationTask(pl.LightningModule):
         uda = False,
         geo_data = False,
         metadata = False,
+        config_name = False
     ):
 
         super().__init__()
@@ -27,6 +38,7 @@ class SegmentationTask(pl.LightningModule):
         self.uda = uda
         self.geo_data = geo_data
         self.metadata = metadata
+        self.config_name = config_name
 
 
     def setup(self, stage=None):
@@ -53,9 +65,16 @@ class SegmentationTask(pl.LightningModule):
                     reduction='elementwise_mean')
             self.val_loss = MeanMetric()
 
+        elif stage == "test":
+            self.cm_test_metrics = ConfusionMatrix(task="multiclass", 
+                                                num_classes=self.num_classes)
+            self.test_metrics = JaccardIndex(
+                    num_classes=self.num_classes,
+                    reduction = "none")
+
     def forward(self, input_im, idx):
         outputs = {}
-        if self.model.name in ("FDMUNet", "UNet", "ResUNet"):
+        if self.model.name in ("FDMUNet", "UNet", "ResUNet18", "ResUNet34", "ResUNet50", "ResUNet101", "ResUNet152"):
             outputs["x1"], outputs["x2"], outputs["x5"], _, outputs["logits"] = self.model(input_im)
         elif self.model.name in ("ConcatGeoUNet", "GeoUNet"):
             outputs["x1"], outputs["x2"], outputs["x5"], outputs["logits"] = self.model(input_im, idx)
@@ -189,13 +208,51 @@ class SegmentationTask(pl.LightningModule):
         self.val_loss.reset()
         self.val_metrics.reset()
 
+    def test_step(self, batch, batch_idx, dataloader_idx=0):
+        _, preds, targets = self.step(batch, stage = "val")
+        self.test_metrics(preds, targets)
+        self.cm_test_metrics(preds, targets)
+
+        self.log(
+            "test_miou",
+            self.test_metrics,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+            rank_zero_only=True)
+
+    def test_epoch_end(self, outputs):
+        cm = self.cm_test_metrics.compute().cpu().numpy()
+
+        fig, ax = plt.subplots(figsize=(36,15)) 
+        ax.set(xlabel='Predicted', ylabel='Actual')
+        df_cm = pd.DataFrame(cm, range(self.num_classes), range(self.num_classes)).astype(np.int64)
+        res = sn.heatmap(df_cm, annot=True, annot_kws={"size": 16}, cmap='Blues',  fmt=',d', ax = ax, cbar = False)
+        res.set_xticklabels(res.get_xmajorticklabels(), fontsize = 15)
+        res.set_yticklabels(res.get_ymajorticklabels(), fontsize = 15)
+        plt.savefig(f"experiments/{self.config_name}/conf_matrix.jpeg")
+
+        classes = ['autres', 'batiment', 'zone-permeable', 'zone-impermeable', 'sol-nu', 'surface_eau',
+                'coniferes', 'feuillus', 'broussaille', 'vigne', 'pelouse', 'culture', 'terre_labouree']
+        miou, ious = calc_miou(cm)
+        tab = PrettyTable(['Class', 'mIou'])
+        for i in range(self.num_classes):
+            tab.add_row([classes[i], ious[i]])
+        tab.add_row(["final mIoU", miou])
+        with open(f"experiments/{self.config_name}/final_ious.txt", 'w') as f:
+            f.write(str(tab))
+        f.close()
+        print(tab)
+
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        images, targets = batch
-        x1, x2, x5, logits = self.forward(images)
-        proba = torch.softmax(logits, dim=1)
+        idx, images, targets = batch
+        outputs = self.forward(images, idx)
+        proba = torch.softmax(outputs["logits"], dim=1)
         out_batch = {}
         out_batch["preds"] =  torch.argmax(proba, dim=1)
         out_batch["img"] = images
+        out_batch["id"] = idx
         return out_batch
 
     def configure_optimizers(self):
