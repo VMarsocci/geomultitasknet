@@ -7,12 +7,13 @@ import torch.nn as nn
 
 class MultiTaskNet(nn.Module):
 
-    def __init__(self, base_model, use_time, pooling, after_encoder, predictor_depth = 1):
+    def __init__(self, base_model, use_time, pooling, after_encoder, predictor_depth = 1, constraint = False):
 
         super(MultiTaskNet, self).__init__()
 
         self.use_time = use_time
         self.pooling = pooling
+        self.constraint = constraint
 
         if self.use_time:
             self.name = "GeoTimeMultiTaskNet"
@@ -27,7 +28,10 @@ class MultiTaskNet(nn.Module):
                 nn.Linear(in_features=128, out_features=4),
                 )
         else:
-            self.name = "GeoMultiTaskNet"
+            if self.constraint:
+                self.name = "StyleGeoMultiTaskNet"
+            else:
+                self.name = "GeoMultiTaskNet"
 
         self.base_model = base_model
         self.after_encoder = after_encoder
@@ -91,19 +95,9 @@ class MultiTaskNet(nn.Module):
                 nn.Linear(in_features=depth[2], out_features=256)
                 )
 
-        # self.coords_predictor = nn.Sequential(
-            # nn.Linear(in_features=input_dim, out_features=1024),
-            # nn.BatchNorm1d(1024),
-            # nn.ReLU(inplace=True),
-            # nn.Linear(in_features=1024, out_features=256),
-            # nn.BatchNorm1d(256),
-            # nn.ReLU(inplace=True),
-            # nn.Linear(in_features=256, out_features=256),
-            # )
-
     def forward(self, x):
 
-        _, _, x5, x, x_2d = self.base_model(x)
+        x1, x2, x5, x, x_2d = self.base_model(x)
 
         if self.pooling:
             if self.after_encoder:
@@ -123,7 +117,10 @@ class MultiTaskNet(nn.Module):
             x_time = self.time_predictor(x.view(x.size(0), -1))
             return x_2d, x_coord, x_time
         else:
-            return x_2d, x_coord         
+            if self.constraint:
+                return x1, x2, x_2d, x_coord
+            else:
+                return x_2d, x_coord         
 
 
 ################LOADING RIGHT MODEL
@@ -135,6 +132,10 @@ def choose_model(model_params, geo_data):
         if model_params["constraint_name"] == "multitask_strategy":
             model = MultiTaskNet(model, model_params["mt_time"], model_params["pooling"], 
                                         model_params["after_encoder"], model_params["predictor_depth"])
+        elif model_params["constraint_name"] == "multitask_and_style":
+            model = MultiTaskNet(model, model_params["mt_time"], model_params["pooling"], 
+                                        model_params["after_encoder"], model_params["predictor_depth"], 
+                                        constraint = True)
     elif model_params["model_name"] == "keepitsimple":
         model = FDMUNet(n_channels = model_params['num_channels'], 
            n_classes = model_params['num_classes'], 
@@ -180,6 +181,10 @@ def choose_model(model_params, geo_data):
         if model_params["constraint_name"] == "multitask_strategy":
             model = MultiTaskNet(model, model_params["mt_time"], model_params["pooling"], 
                                         model_params["after_encoder"], model_params["predictor_depth"])
+        elif model_params["constraint_name"] == "multitask_and_style":
+            model = MultiTaskNet(model, model_params["mt_time"], model_params["pooling"], 
+                                        model_params["after_encoder"], model_params["predictor_depth"], 
+                                        constraint = True)
     else:
         raise Exception("This model is not implemented")       
     print(model.name)

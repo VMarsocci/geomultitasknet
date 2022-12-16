@@ -83,6 +83,8 @@ class SegmentationTask(pl.LightningModule):
             outputs["logits"], outputs["x_coord"], outputs["x_time"] = self.model(input_im)   
         elif self.model.name == "GeoMultiTaskNet":
             outputs["logits"], outputs["x_coord"] = self.model(input_im)    
+        elif self.model.name == "StyleGeoMultiTaskNet":
+            outputs["x1"], outputs["x2"], outputs["logits"], outputs["x_coord"] = self.model(input_im) 
         return outputs
 
     def step(self, batch, stage = "train"):
@@ -136,6 +138,22 @@ class SegmentationTask(pl.LightningModule):
                     loss += coord_loss1 + coord_loss2 + constr_weight*time_loss1 + constr_weight*time_loss2
                 else:
                     loss += constr_weight*coord_loss1 + constr_weight*coord_loss2
+            elif self.criteria["constraint_name"] == "multitask_and_style":
+                constr_criterion= self.criteria["constraint"]["multitask"]
+                constr_weight = self.criteria["constraint_weight"]
+                coords_l, month_l, hour_l, _, _, _ = spatiotemporal_batches(idx, self.geo_data, 
+                                                                            pos_enc_coords = self.metadata["pos_enc_coords"], 
+                                                                            circle_encoding = self.metadata["circle_encoding"],
+                                                                            encoding_freq= self.metadata["encoding_freq"],
+                                                                            geo_noise = self.metadata["geo_noise"])
+                coords_un, month_un, hour_un, _, _, _ = spatiotemporal_batches(idx_t, self.geo_data,                                                                             pos_enc_coords = self.metadata["pos_enc_coords"], 
+                                                                            circle_encoding = self.metadata["circle_encoding"],
+                                                                            encoding_freq= self.metadata["encoding_freq"],
+                                                                            geo_noise = self.metadata["geo_noise"])
+                coord_loss1 = constr_criterion(outputs["x_coord"], coords_l)
+                coord_loss2 = constr_criterion(target_outputs["x_coord"], coords_un)
+                style_loss1 = self.criteria["constraint"]["style"](outputs["x1"], target_outputs["x1"])
+                loss += constr_weight*coord_loss1 + constr_weight*coord_loss2 + style_loss1*100000000000
 
         with torch.no_grad():
             proba = torch.softmax(outputs["logits"], dim=1)
@@ -242,20 +260,6 @@ class SegmentationTask(pl.LightningModule):
             logger=True,
             rank_zero_only=True)
 
-    # def test_step(self, batch, batch_idx, dataloader_idx=0):
-    #     _, preds, targets = self.step(batch, stage = "test")
-    #     self.test_metrics(preds, targets)
-    #     self.cm_test_metrics(preds, targets)
-
-    #     self.log(
-    #         "test_miou",
-    #         self.test_metrics,
-    #         on_step=True,
-    #         on_epoch=True,
-    #         prog_bar=True,
-    #         logger=True,
-    #         rank_zero_only=True)
-
     def test_epoch_end(self, outputs):
         cm = self.cm_test_metrics.compute().cpu().numpy()
 
@@ -278,16 +282,6 @@ class SegmentationTask(pl.LightningModule):
             f.write(str(tab))
         f.close()
         print(tab)
-
-    # def predict_step(self, batch, batch_idx, dataloader_idx=0):
-    #     idx, images, targets = batch
-    #     outputs = self.forward(images, idx)
-    #     proba = torch.softmax(outputs["logits"], dim=1)
-    #     out_batch = {}
-    #     out_batch["preds"] =  torch.argmax(proba, dim=1)
-    #     out_batch["img"] = images
-    #     out_batch["id"] = idx
-    #     return out_batch
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
         idx, images, _ = batch

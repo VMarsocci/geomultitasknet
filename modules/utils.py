@@ -453,6 +453,11 @@ def choose_loss(params):
         criteria["constraint"] = nn.MSELoss()
         criteria["constraint_name"] = "multitask_strategy"
         criteria["mt_time"] = params["mt_time"]
+    elif params["constraint_name"] == "multitask_and_style":
+        criteria["constraint"] = {"multitask" : nn.MSELoss(),
+                                    "style" :  StyleLoss()}
+        criteria["constraint_name"] = "multitask_and_style"
+        # criteria["mt_time"] = params["mt_time"]
     else:
         criteria["constraint"] = False
         criteria["constraint_name"] = False

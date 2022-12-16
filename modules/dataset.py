@@ -49,8 +49,6 @@ class SupDataset(BaseDataset):
         image = tiff.imread(os.path.join(self.data_path,self.images_fps[i]))
         mask = tiff.imread(os.path.join(self.data_path,self.masks_fps[i]))
         
-        # print(mask.dtype, mask.shape)
-        
         image = load_bands(image, self.bands) #select only bands of interest
         
         mask[mask==19]=0
@@ -63,24 +61,7 @@ class SupDataset(BaseDataset):
 
         #random crop of the image and the mask
         if self.cropsize:
-            # if self.stage == "train":
-            #     # h = np.random.randint(0, self.cropsize)
-            #     # w = np.random.randint(0, self.cropsize)
-            #     # image = image[h:h+self.cropsize, w:w+self.cropsize, :]
-            #     # mask = mask[h:h+self.cropsize, w:w+self.cropsize]
             image, mask = random_crop(image, mask, self.cropsize)
-            # else:
-                # if self.four_crops:
-
-                # image = four_crops(image)
-
-                # else:
-                #     h_cps = int(self.cropsize/2)
-                #     hc = wc = 256
-                #     image = image[hc-h_cps:hc+h_cps, wc-h_cps:wc+h_cps, :]
-                #     mask = mask[hc-h_cps:hc+h_cps, wc-h_cps:wc+h_cps]
-                # image = cv2.resize(image, (self.cropsize, self.cropsize), interpolation = cv2.INTER_NEAREST)
-                # mask = cv2.resize(mask, (self.cropsize, self.cropsize), interpolation = cv2.INTER_NEAREST)
 
         
         # apply augmentations
@@ -164,14 +145,3 @@ def random_crop(image, mask, cropsize):
     image = image[h:h+cropsize, w:w+cropsize, :]
     mask = mask[h:h+cropsize, w:w+cropsize]
     return image, mask
-
-# def four_crops(image, cropsize = 265):
-#     im0 = image[0:256, 0:256, :]
-#     im1 = image[256:512, 0:256, :]
-#     im2 = image[0:256, 256:512, :]
-#     im3 = image[256:512, 256:512, :]
-#     # m0 = mask[0:256, 0:256]
-#     # m1 = mask[256:512, 0:256]
-#     # m2 = mask[0:256, 256:512]
-#     # m3 = mask[256:512, 256:512]
-#     return [im0, im1, im2, im3]

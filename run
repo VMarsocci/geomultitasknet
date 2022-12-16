@@ -75,10 +75,11 @@ export QT_QPA_PLATFORM=offscreen
 # python test.py -c="pool_enc_unet_lowfreq_noise" -p True
 # python test.py -c="resunet50bestmt" -p True
 
-python train.py -c="fd_rn34"
-python train.py -c="fd_rn50"
+# python train.py -c="fd_rn34"
+# python train.py -c="fd_rn50"
 python train.py -c="fd_rn34_mt"
 python train.py -c="fd_rn50_mt"
 python train.py -c="fd_rn34_deeper_mt"
 python train.py -c="fd_rn50_deeper_mt"
 python train.py -c="fd_rn34_mt_warmup"
+python train.py -c="unet_best_gram"
