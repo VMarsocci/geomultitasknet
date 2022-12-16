@@ -42,6 +42,18 @@ def set_scheduler(optim_params, optimizer):
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 
                                                          T_max = 10, 
                                                          eta_min=optim_params['end_lr'])
+    elif optim_params['lr_schedule_type'] == 'warmup':
+            def lr_foo(epoch):
+                if epoch < optim_params['warmup_epochs']:
+                    lr_scale = 0.01 ** (optim_params['warmup_epochs'] - epoch)
+                else:
+                    lr_scale = optim_params['lr'] ** epoch
+                return lr_scale
+
+            scheduler = optim.lr_scheduler.LambdaLR(
+                optimizer,
+                lr_lambda=lr_foo
+                )
     else:
         raise Exception('The selected scheduler type is not available.')
     return scheduler

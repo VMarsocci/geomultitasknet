@@ -146,24 +146,24 @@ class StyleLoss(nn.Module):
         loss = F.mse_loss(G, target)
         return loss
 
-def create_spatiotempoinfo(img_names, info_diz):
+# def create_spatiotempoinfo(img_names, info_diz):
 
-  batch = []
-  for img_name in img_names:
+#   batch = []
+#   for img_name in img_names:
 
-    key = img_name.split("/")[1] + "-" + img_name.split("/")[2] + "-" + img_name.split("/")[-1].split(".")[0]
+#     key = img_name.split("/")[1] + "-" + img_name.split("/")[2] + "-" + img_name.split("/")[-1].split(".")[0]
 
-    x = info_diz[key]["patch_centroid_x"] - 489353.59 #center coordinate for EPSG:2154
-    y = info_diz[key]["patch_centroid_y"] - 6587552.2 #center coordinate for EPSG:2154
-    year = int(info_diz[key]["date"].split('-')[0]) - 2018 #norm with the minimum
-    month = int(info_diz[key]["date"].split('-')[1])
-    hour = int(info_diz[key]["time"].split('h')[0])
-    if int(info_diz[key]["time"].split('h')[1]) > 30: #approx the hour
-      hour += 1
+#     x = info_diz[key]["patch_centroid_x"] - 489353.59 #center coordinate for EPSG:2154
+#     y = info_diz[key]["patch_centroid_y"] - 6587552.2 #center coordinate for EPSG:2154
+#     year = int(info_diz[key]["date"].split('-')[0]) - 2018 #norm with the minimum
+#     month = int(info_diz[key]["date"].split('-')[1])
+#     hour = int(info_diz[key]["time"].split('h')[0])
+#     if int(info_diz[key]["time"].split('h')[1]) > 30: #approx the hour
+#       hour += 1
 
-    batch.append(torch.tensor([x, y, year, month, hour]))
+#     batch.append(torch.tensor([x, y, year, month, hour]))
 
-  return torch.stack(batch)
+#   return torch.stack(batch)
 
 
 class UnNormalize(object):
@@ -326,14 +326,14 @@ def spatiotemporal_batches(img_names,
   domain_batch = []
   lab_distr_batch = []
 
-#   cat = {'D004_2021': 0, 'D058_2020': 1, 'D070_2020': 2, 'D078_2021': 3, 'D016_2020': 4, 'D013_2020': 5, 'D072_2019': 6, 'D067_2021': 7,'D021_2020': 8, 'D080_2021': 9, 
-#         'D033_2021': 10, 'D074_2020': 11, 'D091_2021': 12, 'D017_2018': 13, 'D044_2020': 14, 'D006_2020': 15,'D066_2021': 16, 'D046_2019': 17,'D051_2019': 18, 'D052_2019': 19,
-#         'D060_2021': 20, 'D077_2021': 21,'D041_2021': 22, 'D030_2021': 23,'D031_2019': 24, 'D014_2020': 25, 'D081_2020': 26, 'D023_2020': 27, 'D009_2019': 28, 'D008_2019': 29, 
-#         'D007_2020': 30, 'D032_2019': 31, 'D086_2020': 32, 'D035_2020': 33,'D029_2021': 34, 'D034_2021': 35, 'D063_2019': 36, 'D055_2018': 37, 'D038_2021': 38, 'D049_2020': 39, 
-#         'D075_2021': 40, 'D026_2020': 41, 'D064_2021': 42, 'D022_2021': 43, 'D071_2020': 44, 'D085_2019': 45,'D012_2019': 46,'D076_2019': 47,'D083_2020': 48,'D068_2021': 49}
+  cat = {'D004_2021': 0, 'D058_2020': 1, 'D070_2020': 2, 'D078_2021': 3, 'D016_2020': 4, 'D013_2020': 5, 'D072_2019': 6, 'D067_2021': 7,'D021_2020': 8, 'D080_2021': 9, 
+        'D033_2021': 10, 'D074_2020': 11, 'D091_2021': 12, 'D017_2018': 13, 'D044_2020': 14, 'D006_2020': 15,'D066_2021': 16, 'D046_2019': 17,'D051_2019': 18, 'D052_2019': 19,
+        'D060_2021': 20, 'D077_2021': 21,'D041_2021': 22, 'D030_2021': 23,'D031_2019': 24, 'D014_2020': 25, 'D081_2020': 26, 'D023_2020': 27, 'D009_2019': 28, 'D008_2019': 29, 
+        'D007_2020': 30, 'D032_2019': 31, 'D086_2020': 32, 'D035_2020': 33,'D029_2021': 34, 'D034_2021': 35, 'D063_2019': 36, 'D055_2018': 37, 'D038_2021': 38, 'D049_2020': 39, 
+        'D075_2021': 40, 'D026_2020': 41, 'D064_2021': 42, 'D022_2021': 43, 'D071_2020': 44, 'D085_2019': 45,'D012_2019': 46,'D076_2019': 47,'D083_2020': 48,'D068_2021': 49}
 
-  cat = {"D064_2021" : 0, "D068_2021" : 1, "D071_2020" : 2, "D006_2020" : 3, "D008_2019" : 4, "D013_2020" : 5,"D017_2018" : 6, 
-        "D023_2020" : 7, "D029_2021" : 8, "D033_2021" : 9, "D058_2020": 10,"D067_2021": 11, "D074_2020" : 12}
+#   cat = {"D064_2021" : 0, "D068_2021" : 1, "D071_2020" : 2, "D006_2020" : 3, "D008_2019" : 4, "D013_2020" : 5,"D017_2018" : 6, 
+#         "D023_2020" : 7, "D029_2021" : 8, "D033_2021" : 9, "D058_2020": 10,"D067_2021": 11, "D074_2020" : 12}
 
 # distr label domains
   lab_distr_d = {"D064_2021" : [0.0003647796201034331, 0.06452758359237457, 0.06800279214348591, 0.14679691368425396, 0.18834572805485256, 
@@ -395,7 +395,8 @@ def spatiotemporal_batches(img_names,
     hour = int(info_diz[key]["time"].split('h')[0])
     if int(info_diz[key]["time"].split('h')[1]) > 30: #approx the hour
       hour += 1
-    lab_distr = lab_distr_d[info_diz[key]["domain"]]
+    # lab_distr = lab_distr_d[info_diz[key]["domain"]]
+    lab_distr = 0
 
     if pos_enc_coords:
         d= int(256/2)
@@ -467,3 +468,10 @@ def calc_miou(cm_array):
     m = (np.nansum(ious) / (np.logical_not(np.isnan(ious))).sum()).round(2)
 
     return m.astype(float), ious 
+
+def four_crops(image, cropsize = 265):
+    im0 = image[:, :, 0:256, 0:256]
+    im1 = image[:, :, 256:512, 0:256]
+    im2 = image[:, :, 0:256, 256:512]
+    im3 = image[:, :, 256:512, 256:512]
+    return [im0, im1, im2, im3]

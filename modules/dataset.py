@@ -4,6 +4,8 @@ import torch
 import os
 import tifffile as tiff
 import numpy as np
+import random
+import cv2
 
 class SupDataset(BaseDataset):
     """Read images, apply augmentation and preprocessing transformations.
@@ -20,7 +22,7 @@ class SupDataset(BaseDataset):
             masks_txt, 
             bands = 'rgbirh',
             augmentation=None,
-            cropsize = 256,
+            cropsize = False,
             geoinfo = False,
             stage = "train"
             ):
@@ -61,16 +63,25 @@ class SupDataset(BaseDataset):
 
         #random crop of the image and the mask
         if self.cropsize:
-            if self.stage == "train":
-                h = np.random.randint(0, self.cropsize)
-                w = np.random.randint(0, self.cropsize)
-                image = image[h:h+self.cropsize, w:w+self.cropsize, :]
-                mask = mask[h:h+self.cropsize, w:w+self.cropsize]
-            else:
-                h_cps = int(self.cropsize/2)
-                hc = wc = 256
-                image = image[hc-h_cps:hc+h_cps, wc-h_cps:wc+h_cps, :]
-                mask = mask[hc-h_cps:hc+h_cps, wc-h_cps:wc+h_cps]
+            # if self.stage == "train":
+            #     # h = np.random.randint(0, self.cropsize)
+            #     # w = np.random.randint(0, self.cropsize)
+            #     # image = image[h:h+self.cropsize, w:w+self.cropsize, :]
+            #     # mask = mask[h:h+self.cropsize, w:w+self.cropsize]
+            image, mask = random_crop(image, mask, self.cropsize)
+            # else:
+                # if self.four_crops:
+
+                # image = four_crops(image)
+
+                # else:
+                #     h_cps = int(self.cropsize/2)
+                #     hc = wc = 256
+                #     image = image[hc-h_cps:hc+h_cps, wc-h_cps:wc+h_cps, :]
+                #     mask = mask[hc-h_cps:hc+h_cps, wc-h_cps:wc+h_cps]
+                # image = cv2.resize(image, (self.cropsize, self.cropsize), interpolation = cv2.INTER_NEAREST)
+                # mask = cv2.resize(mask, (self.cropsize, self.cropsize), interpolation = cv2.INTER_NEAREST)
+
         
         # apply augmentations
         if self.augmentation:
@@ -87,53 +98,6 @@ class SupDataset(BaseDataset):
     def __len__(self):
         return len(self.images_fps)
         
-# class UnsupDataset(BaseDataset):
-    
-#     def __init__(
-#             self, 
-#             path,
-#             images_txt, 
-#             bands = 'rgbirh',
-#             augmentation=None,
-#             cropsize = 256,
-#             crop_indexes = False #for noisy student training
-#             ):
-
-#         with open(images_txt) as f:
-#             lines = f.readlines()
-            
-#         self.images_fps = sorted([line.strip() for line in lines]) 
-#         self.augmentation = augmentation
-#         self.bands = bands
-#         self.data_path = path
-#         self.cropsize = cropsize
-#         self.crop_indexes = crop_indexes
-    
-#     def __getitem__(self, i):
-        
-#         # read data
-#         image = tiff.imread(os.path.join(self.data_path, self.images_fps[i]))
-        
-#         image = load_bands(image, self.bands)
-        
-#         #random crop of the image
-#         if self.cropsize:
-#             self.h = np.random.randint(0, self.cropsize)
-#             self.w = np.random.randint(0, self.cropsize)
-#             image = image[self.h:self.h+self.cropsize, self.w:self.w+self.cropsize, :]
-
-#         # apply augmentations
-#         if self.augmentation:
-#             image = self.augmentation(image = image)['image']
-
-#         if self.crop_indexes:            
-#             return self.images_fps[i], image, self.h, self.w
-#         else:
-#             return self.images_fps[i], image
-        
-#     def __len__(self):
-#         return len(self.images_fps)
-    
 class InfiniteDataLoader(DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -180,3 +144,34 @@ def pos_enc(img_name, info_diz):
     enc[d+1::2]=np.cos(y * freq)
 
     return torch.tensor(enc)
+
+def crop_or_resize(image, mask, cropsize):
+  n = random.randint(1,2)
+  if n==1:
+    choice = random_crop(image, mask, cropsize)   
+  if n ==2:
+    choice = im_resize(image, mask, cropsize)
+  return choice
+
+def im_resize(image, mask, cropsize):
+    image = cv2.resize(image, (cropsize, cropsize), interpolation = cv2.INTER_NEAREST)
+    mask = cv2.resize(mask, (cropsize, cropsize), interpolation = cv2.INTER_NEAREST)
+    return image, mask
+
+def random_crop(image, mask, cropsize):
+    h = np.random.randint(0, cropsize)
+    w = np.random.randint(0, cropsize)
+    image = image[h:h+cropsize, w:w+cropsize, :]
+    mask = mask[h:h+cropsize, w:w+cropsize]
+    return image, mask
+
+# def four_crops(image, cropsize = 265):
+#     im0 = image[0:256, 0:256, :]
+#     im1 = image[256:512, 0:256, :]
+#     im2 = image[0:256, 256:512, :]
+#     im3 = image[256:512, 256:512, :]
+#     # m0 = mask[0:256, 0:256]
+#     # m1 = mask[256:512, 0:256]
+#     # m2 = mask[0:256, 256:512]
+#     # m3 = mask[256:512, 256:512]
+#     return [im0, im1, im2, im3]

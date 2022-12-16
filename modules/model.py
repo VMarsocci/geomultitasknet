@@ -7,7 +7,7 @@ import torch.nn as nn
 
 class MultiTaskNet(nn.Module):
 
-    def __init__(self, base_model, use_time, pooling, after_encoder):
+    def __init__(self, base_model, use_time, pooling, after_encoder, predictor_depth = 1):
 
         super(MultiTaskNet, self).__init__()
 
@@ -31,6 +31,7 @@ class MultiTaskNet(nn.Module):
 
         self.base_model = base_model
         self.after_encoder = after_encoder
+        self.predictor_depth = predictor_depth
 
         if self.after_encoder:
             if not self.pooling:
@@ -67,16 +68,38 @@ class MultiTaskNet(nn.Module):
                     input_dim = 32*32*32*4
                 else:
                     input_dim = 16*32*32           
-            
+        
+
+        depth = [1024, 512, 256]
+        depth = [item * self.predictor_depth for item in depth]
+
+        # NEW ONE
         self.coords_predictor = nn.Sequential(
-            nn.Linear(in_features=input_dim, out_features=1024),
-            nn.BatchNorm1d(1024),
+            nn.Linear(in_features=input_dim, out_features=depth[0]),
+            nn.BatchNorm1d(depth[0]),
             nn.ReLU(inplace=True),
-            nn.Linear(in_features=1024, out_features=256),
-            nn.BatchNorm1d(256),
+            nn.Linear(in_features=depth[0], out_features=depth[1]),
+            nn.BatchNorm1d(depth[1]),
             nn.ReLU(inplace=True),
-            nn.Linear(in_features=256, out_features=256),
-            )
+            nn.Linear(in_features=depth[1], out_features=depth[2]),
+            ) 
+        if self.predictor_depth > 1:
+            self.coords_predictor = nn.Sequential(
+                self.coords_predictor,
+                nn.BatchNorm1d(depth[2]),
+                nn.ReLU(inplace=True),
+                nn.Linear(in_features=depth[2], out_features=256)
+                )
+
+        # self.coords_predictor = nn.Sequential(
+            # nn.Linear(in_features=input_dim, out_features=1024),
+            # nn.BatchNorm1d(1024),
+            # nn.ReLU(inplace=True),
+            # nn.Linear(in_features=1024, out_features=256),
+            # nn.BatchNorm1d(256),
+            # nn.ReLU(inplace=True),
+            # nn.Linear(in_features=256, out_features=256),
+            # )
 
     def forward(self, x):
 
@@ -110,7 +133,8 @@ def choose_model(model_params, geo_data):
                 n_classes = model_params['num_classes'], 
                 drop_out = model_params['dropout'])
         if model_params["constraint_name"] == "multitask_strategy":
-            model = MultiTaskNet(model, model_params["mt_time"], model_params["pooling"], model_params["after_encoder"])
+            model = MultiTaskNet(model, model_params["mt_time"], model_params["pooling"], 
+                                        model_params["after_encoder"], model_params["predictor_depth"])
     elif model_params["model_name"] == "keepitsimple":
         model = FDMUNet(n_channels = model_params['num_channels'], 
            n_classes = model_params['num_classes'], 
@@ -154,7 +178,8 @@ def choose_model(model_params, geo_data):
                 pretrained=True, 
                 is_deconv=False)
         if model_params["constraint_name"] == "multitask_strategy":
-            model = MultiTaskNet(model, model_params["mt_time"], model_params["pooling"], model_params["after_encoder"])
+            model = MultiTaskNet(model, model_params["mt_time"], model_params["pooling"], 
+                                        model_params["after_encoder"], model_params["predictor_depth"])
     else:
         raise Exception("This model is not implemented")       
     print(model.name)

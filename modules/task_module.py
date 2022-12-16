@@ -2,6 +2,7 @@ import torch
 from torchmetrics import MeanMetric, JaccardIndex, ConfusionMatrix
 import pytorch_lightning as pl
 import torchvision
+import torchvision.transforms as T
 import io
 from PIL import Image
 
@@ -12,7 +13,7 @@ import matplotlib.pyplot as plt
 
 from prettytable import PrettyTable
 
-from .utils import spatiotemporal_batches, calc_miou
+from .utils import spatiotemporal_batches, calc_miou, four_crops
 
 
 class SegmentationTask(pl.LightningModule):
@@ -89,7 +90,7 @@ class SegmentationTask(pl.LightningModule):
             idx, images, targets = batch["source"]
             if self.uda:
                 idx_t, im_t, _ = batch["target"]
-        elif stage == "val":
+        elif stage in ("val", "test"):
             idx, images, targets = batch
 
         outputs = self.forward(images, idx)
@@ -139,7 +140,7 @@ class SegmentationTask(pl.LightningModule):
         with torch.no_grad():
             proba = torch.softmax(outputs["logits"], dim=1)
             preds = torch.argmax(proba, dim=1)
-            preds = preds.flatten(start_dim=1)  # Change shapes and cast target to integer for metrics computation
+            preds = preds.flatten(start_dim=1)
             targets = targets.flatten(start_dim=1).type(torch.int32)
         return loss, preds, targets
 
@@ -209,7 +210,26 @@ class SegmentationTask(pl.LightningModule):
         self.val_metrics.reset()
 
     def test_step(self, batch, batch_idx, dataloader_idx=0):
-        _, preds, targets = self.step(batch, stage = "val")
+        idx, images, targets = batch
+        images = four_crops(images)
+
+        preds = []
+        with torch.no_grad():
+            for image in images:
+                outputs = self.forward(image, idx)
+                proba = torch.softmax(outputs["logits"], dim=1)
+                pred = torch.argmax(proba, dim=1)
+                preds.append(pred)
+
+        fpred = torch.zeros((1, 512,512)).to("cuda")
+        fpred[:, 0:256, 0:256] = preds[0]
+        fpred[:, 256:512, 0:256] = preds[1]
+        fpred[:, 0:256, 256:512] = preds[2]
+        fpred[:, 256:512, 256:512] = preds[3]
+
+
+        preds = fpred.unsqueeze(0).flatten(start_dim=1).type(torch.int32)
+        targets = targets.flatten(start_dim=1).type(torch.int32)
         self.test_metrics(preds, targets)
         self.cm_test_metrics(preds, targets)
 
@@ -221,6 +241,20 @@ class SegmentationTask(pl.LightningModule):
             prog_bar=True,
             logger=True,
             rank_zero_only=True)
+
+    # def test_step(self, batch, batch_idx, dataloader_idx=0):
+    #     _, preds, targets = self.step(batch, stage = "test")
+    #     self.test_metrics(preds, targets)
+    #     self.cm_test_metrics(preds, targets)
+
+    #     self.log(
+    #         "test_miou",
+    #         self.test_metrics,
+    #         on_step=True,
+    #         on_epoch=True,
+    #         prog_bar=True,
+    #         logger=True,
+    #         rank_zero_only=True)
 
     def test_epoch_end(self, outputs):
         cm = self.cm_test_metrics.compute().cpu().numpy()
@@ -245,13 +279,45 @@ class SegmentationTask(pl.LightningModule):
         f.close()
         print(tab)
 
+    # def predict_step(self, batch, batch_idx, dataloader_idx=0):
+    #     idx, images, targets = batch
+    #     outputs = self.forward(images, idx)
+    #     proba = torch.softmax(outputs["logits"], dim=1)
+    #     out_batch = {}
+    #     out_batch["preds"] =  torch.argmax(proba, dim=1)
+    #     out_batch["img"] = images
+    #     out_batch["id"] = idx
+    #     return out_batch
+
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        idx, images, targets = batch
-        outputs = self.forward(images, idx)
-        proba = torch.softmax(outputs["logits"], dim=1)
+        idx, images, _ = batch
+
+        images = four_crops(images)
+
+        preds = []
+        with torch.no_grad():
+            for image in images:
+                outputs = self.forward(image, idx)
+                proba = torch.softmax(outputs["logits"], dim=1)
+                pred = torch.argmax(proba, dim=1)
+                preds.append(pred)
+
+        fpred = torch.zeros((1, 512,512)).to("cuda")
+        fpred[:, 0:256, 0:256] = preds[0]
+        fpred[:, 256:512, 0:256] = preds[1]
+        fpred[:, 0:256, 256:512] = preds[2]
+        fpred[:, 256:512, 256:512] = preds[3]
+
+        image = torch.zeros((3, 512,512))
+        image[:, 0:256, 0:256] = images[0]
+        image[:, 256:512, 0:256] = images[1]
+        image[:, 0:256, 256:512] = images[2]
+        image[:, 256:512, 256:512] = images[3]
+
+
         out_batch = {}
-        out_batch["preds"] =  torch.argmax(proba, dim=1)
-        out_batch["img"] = images
+        out_batch["preds"] =  fpred.type(torch.int32)
+        out_batch["img"] = image
         out_batch["id"] = idx
         return out_batch
 

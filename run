@@ -54,13 +54,31 @@ export QT_QPA_PLATFORM=offscreen
 # python train.py -c="baselineresunet"
 # # python test.py -c="baselineresunet" -p True
 
-echo "resunet34"
-python train.py -c="resunet34"
-echo "resunet34_mt"
-python train.py -c="resunet34bestmt"
-echo "resunet50"
-python train.py -c="resunet50"
-echo "resunet50_mt"
-python train.py -c="resunet50bestmt"
-echo "unetlowfreq"
-python train.py -c="bestunet_lowerfreq_noise"
+# echo "resunet34"
+# python train.py -c="resunet34"
+# echo "resunet34_mt"
+# python train.py -c="resunet34bestmt"
+# echo "resunet50"
+# python train.py -c="resunet50"
+# echo "resunet50_mt"
+# python train.py -c="resunet50bestmt"
+# echo "unetlowfreq"
+# python train.py -c="bestunet_lowerfreq_noise"
+
+# python train.py -c="resunet50bestmt_fulldataset"
+# cd ../baselines/UDA_for_RS
+# source /home/VMarsocci/anaconda3/etc/profile.d/conda.sh
+# conda activate sepico
+# python -m tools.train "configs/uda_rs/prova_full.py"
+
+# python test.py -c="baseline" -p True
+# python test.py -c="pool_enc_unet_lowfreq_noise" -p True
+# python test.py -c="resunet50bestmt" -p True
+
+python train.py -c="fd_rn34"
+python train.py -c="fd_rn50"
+python train.py -c="fd_rn34_mt"
+python train.py -c="fd_rn50_mt"
+python train.py -c="fd_rn34_deeper_mt"
+python train.py -c="fd_rn50_deeper_mt"
+python train.py -c="fd_rn34_mt_warmup"

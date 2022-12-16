@@ -71,7 +71,7 @@ dm = DataModule(
     bands = exp_config['data']['bands'],
     train_augmentation= train_trans,
     valid_augmentation= val_trans,
-    cropsize = 256,
+    # cropsize = 256,
     geoinfo = False,
     batch_size = 1,
     num_workers = num_workers,
@@ -82,6 +82,10 @@ dm = DataModule(
 ###########   MODEL    ##########
 net = choose_model(exp_config['model'], geo_data)
 ckpt_path = exp_config['model']['ckpt_path'] if exp_config['model']['ckpt_path'] else None
+
+# #####TEMP LOADING
+# pth = torch.load("experiments/net.pth", map_location='cuda:0')
+# net.load_state_dict(pth)
 
 ###########   LOSS    ##########
 criteria = choose_loss(exp_config['model'])
