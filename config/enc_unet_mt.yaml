@@ -54,8 +54,8 @@ data:
     normalization: [[0.44627694, 0.46320033, 0.42865627], 
                       [0.2055539 , 0.18050476, 0.177541]]
   val:
-    img_txt: '../data/sub_test_imgs.txt'
-    mask_txt: '../data/sub_test_masks.txt'
+    img_txt: '../data/sub_val_imgs.txt'
+    mask_txt: '../data/sub_val_masks.txt'
     normalization: [[0.44609856, 0.46605311, 0.43317396], 
                       [0.21038504, 0.18305449, 0.17746451]]
   test:
